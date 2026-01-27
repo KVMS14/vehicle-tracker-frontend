@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Seguimiento en Tiempo Real</title>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .status {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="status" class="status">
+    ⏳ Conectando al vehículo...
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // ================= MAPA =================
+    const map = L.map("map").setView([0, 0], 2);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "© OpenStreetMap"
+    }).addTo(map);
+
+    let marker = null;
+    let route = L.polyline([], {
+      color: "red",
+      weight: 4
+    }).addTo(map);
+
+    const status = document.getElementById("status");
+
+    // ================= WEBSOCKET =================
+    const WS_URL = "wss://vehicle-backend-ocks.onrender.com";
+
+    const socket = new WebSocket(WS_URL);
+
+    socket.onopen = () => {
+      console.log("🟢 WebSocket conectado");
+      status.innerText = "🟢 Conectado — esperando GPS...";
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (!data.lat || !data.lon) return;
+
+      const point = [data.lat, data.lon];
+
+      status.innerText =
+        `📍 GPS activo\n${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`;
+
+      // Marcador
+      if (!marker) {
+        marker = L.marker(point).addTo(map);
+        map.setView(point, 17);
+      } else {
+        marker.setLatLng(point);
+      }
+
+      // Ruta
+      route.addLatLng(point);
+    };
+
+    socket.onclose = () => {
+      status.innerText = "🔴 Conexión perdida";
+    };
+
+    socket.onerror = () => {
+      status.innerText = "⚠️ Error WebSocket";
+    };
+  </script>
+
+</body>
+</html>
