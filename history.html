@@ -46,6 +46,30 @@
       border: none;
       padding: 4px;
     }
+
+    #routesList {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 10px;
+      z-index: 1000;
+      max-height: 40vh;
+      overflow-y: auto;
+      font-size: 14px;
+      min-width: 260px;
+    }
+    
+    .route-item {
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
   </style>
 
 </head>
@@ -178,7 +202,9 @@
         iconAnchor: [20, 40]
       });
 
-    
+      const startPoint = latlngs[0];
+      const endPoint = latlngs[latlngs.length - 1];
+
       const startMarker = L.marker(startPoint, { icon: startIcon })
         .addTo(map)
         .bindPopup("🟢 Inicio de ruta");
