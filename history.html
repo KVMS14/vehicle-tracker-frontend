@@ -21,12 +21,24 @@
       background: #222;
       color: white;
       display: flex;
-      gap: 10px;
+      gap: 15px;
       align-items: center;
     }
 
+    #routesList {
+      padding: 10px;
+      background: #f4f4f4;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+
+    .route-item {
+      margin-bottom: 6px;
+    }
+
     #map {
-      height: calc(100% - 50px);
+      height: calc(100% - 220px);
     }
   </style>
 </head>
@@ -37,6 +49,7 @@
     <span id="info"></span>
   </div>
 
+  <div id="routesList"></div>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -51,25 +64,25 @@
     }).addTo(map);
 
     const colors = ["red", "blue", "green", "purple", "orange", "brown"];
-    let polylines = [];
 
     const datePicker = document.getElementById("datePicker");
     const info = document.getElementById("info");
+    const routesList = document.getElementById("routesList");
+
+    const drawnRoutes = {}; // routeId -> layers
 
     datePicker.valueAsDate = new Date();
     datePicker.addEventListener("change", loadRoutes);
 
     async function loadRoutes() {
-      clearMap();
-
-      const date = datePicker.value;
+      clearAll();
+      routesList.innerHTML = "";
       info.innerText = "Cargando rutas...";
 
-      try {
-        const res = await fetch(
-          `${API_BASE}/routes/by-date/${date}`
-        );
+      const date = datePicker.value;
 
+      try {
+        const res = await fetch(`${API_BASE}/routes/by-date/${date}`);
         const routes = await res.json();
 
         if (!routes.length) {
@@ -77,30 +90,36 @@
           return;
         }
 
-        let allBounds = [];
-
         routes.forEach((route, index) => {
-          if (!route.points || route.points.length < 2) return;
+          const start = new Date(route.startTime);
+          const end = route.endTime ? new Date(route.endTime) : null;
 
-          const latlngs = route.points.map(p => [
-            p.lat,
-            p.lon   // 👈 CORRECTO
-          ]);
+          const label = `
+            Ruta ${index + 1} — 
+            Inicio ${start.toLocaleTimeString()} 
+            ${end ? "— Fin " + end.toLocaleTimeString() : ""}
+          `;
 
-          const polyline = L.polyline(latlngs, {
-            color: colors[index % colors.length],
-            weight: 4
-          }).addTo(map);
+          const div = document.createElement("div");
+          div.className = "route-item";
 
-          polylines.push(polyline);
-          allBounds.push(...latlngs);
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+
+          checkbox.addEventListener("change", () => {
+            if (checkbox.checked) {
+              drawRoute(route, index);
+            } else {
+              removeRoute(route._id);
+            }
+          });
+
+          div.appendChild(checkbox);
+          div.append(" " + label);
+          routesList.appendChild(div);
         });
 
-        if (allBounds.length) {
-          map.fitBounds(allBounds);
-        }
-
-        info.innerText = `${polylines.length} ruta(s) cargadas`;
+        info.innerText = `${routes.length} ruta(s) disponibles`;
 
       } catch (err) {
         console.error(err);
@@ -108,9 +127,48 @@
       }
     }
 
-    function clearMap() {
-      polylines.forEach(p => map.removeLayer(p));
-      polylines = [];
+    function drawRoute(route, index) {
+      if (!route.points || route.points.length < 2) return;
+
+      const color = colors[index % colors.length];
+      const latlngs = route.points.map(p => [p.lat, p.lon]);
+
+      const polyline = L.polyline(latlngs, {
+        color,
+        weight: 4
+      }).addTo(map);
+
+      const startMarker = L.marker(latlngs[0], {
+        title: "Inicio"
+      }).addTo(map);
+
+      const endMarker = L.marker(latlngs[latlngs.length - 1], {
+        title: "Fin"
+      }).addTo(map);
+
+      drawnRoutes[route._id] = {
+        polyline,
+        startMarker,
+        endMarker
+      };
+
+      map.fitBounds(polyline.getBounds());
+    }
+
+    function removeRoute(routeId) {
+      const layers = drawnRoutes[routeId];
+      if (!layers) return;
+
+      map.removeLayer(layers.polyline);
+      map.removeLayer(layers.startMarker);
+      map.removeLayer(layers.endMarker);
+
+      delete drawnRoutes[routeId];
+    }
+
+    function clearAll() {
+      Object.keys(drawnRoutes).forEach(removeRoute);
+      drawnRoutes.clear;
     }
 
     loadRoutes();
@@ -118,4 +176,5 @@
 
 </body>
 </html>
+
 
