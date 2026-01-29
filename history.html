@@ -57,12 +57,25 @@
       padding: 10px 12px;
       border-radius: 10px;
       z-index: 1000;
-      max-height: 40vh;
-      overflow-y: auto;
+    
+      width: 90%;
+      max-width: 320px;
+    
+      max-height: 120px;      /* 🔥 AQUÍ controlas cuántas rutas se ven */
+      overflow-y: auto;       /* 🔥 SCROLL CON RUEDA / DEDO */
+      
       font-size: 14px;
-      min-width: 260px;
+    }
+
+    #routesList::-webkit-scrollbar {
+      width: 6px;
     }
     
+    #routesList::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.4);
+      border-radius: 10px;
+    }
+ 
     .route-item {
       margin-bottom: 6px;
       display: flex;
